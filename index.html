@@ -438,7 +438,7 @@ const NODE_COLORS = [
 const state = {
   nodes:[], edges:[], nextId:1,
   panX:0, panY:0, scale:1,
-  physics:true,
+  physics:false,  // 自動移動しない
   dragging:null, panning:false, panStart:null,
   connectingFrom:null, selectedNode:null, editingNode:null,
   currentBoardId: null,
@@ -496,7 +496,7 @@ function createNode(wx, wy, text='新しいノード', isRoot=false, colorIndex=
 }
 function renderNode(node){
   const el = document.createElement('div');
-  el.className = `node${node.isRoot?' root-node':''} floating`;
+  el.className = `node${node.isRoot?' root-node':''}`;  // floating 除去
   el.id = `node-${node.id}`;
   el.dataset.id = node.id;
   el.innerHTML = buildNodeHTML(node);
@@ -641,9 +641,9 @@ function attachNodeEvents(node){
     e.stopPropagation();
     const r=el.getBoundingClientRect();
     state.dragging={id:node.id,offsetX:e.clientX-r.left-r.width/2,offsetY:e.clientY-r.top-r.height/2};
-    node.pinned=true; el.classList.remove('floating'); e.preventDefault();
+    node.pinned=true; e.preventDefault();
   });
-  window.addEventListener('mouseup',()=>{ if(state.dragging?.id===node.id) el.classList.add('floating'); });
+  window.addEventListener('mouseup',()=>{ state.dragging?.id===node.id; });
   bubble.addEventListener('dblclick',e=>{ e.stopPropagation(); openEditor(node,e.clientX,e.clientY); });
   bubble.addEventListener('click',e=>{
     e.stopPropagation();
