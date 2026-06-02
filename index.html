@@ -588,24 +588,34 @@ function removeEdgesByNode(id){
   state.edges = state.edges.filter(e=>e.from!==id&&e.to!==id);
 }
 
-const REP=8000, SPK=0.04, SPL=180, DAMP=0.85, MAXV=8;
+// REP: 全ノード間の斥力, SPK: バネ定数, SPL: バネ自然長(接続ノードの目標距離), MIN_EDGE_DIST: 接続ノードの最小距離
+const REP=8000, SPK=0.045, SPL=260, DAMP=0.85, MAXV=8, MIN_EDGE_DIST=200, EDGE_REP=18000;
 function physicsTick(){
   if(!state.physics) return;
   const ns=state.nodes, n=ns.length;
   for(let i=0;i<n;i++){ns[i].fx=0;ns[i].fy=0;}
+  // 全ノード間の斥力
   for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
     const dx=ns[j].x-ns[i].x, dy=ns[j].y-ns[i].y;
     const d2=dx*dx+dy*dy, d=Math.sqrt(d2)||.001, f=REP/(d2+1);
     ns[i].fx-=(dx/d)*f; ns[i].fy-=(dy/d)*f;
     ns[j].fx+=(dx/d)*f; ns[j].fy+=(dy/d)*f;
   }
+  // 接続ノード: バネ力 + 近づきすぎた場合の追加斥力
   for(const e of state.edges){
     const a=ns.find(x=>x.id===e.from), b=ns.find(x=>x.id===e.to);
     if(!a||!b) continue;
     const dx=b.x-a.x, dy=b.y-a.y, d=Math.sqrt(dx*dx+dy*dy)||.001;
+    // バネ力（引き合い）
     const f=SPK*(d-SPL), fx=(dx/d)*f, fy=(dy/d)*f;
     if(!a.pinned){a.fx+=fx;a.fy+=fy;}
     if(!b.pinned){b.fx-=fx;b.fy-=fy;}
+    // 最小距離以下なら強い斥力を追加
+    if(d < MIN_EDGE_DIST){
+      const rf = EDGE_REP / (d*d+1);
+      if(!a.pinned){a.fx-=(dx/d)*rf;a.fy-=(dy/d)*rf;}
+      if(!b.pinned){b.fx+=(dx/d)*rf;b.fy+=(dy/d)*rf;}
+    }
   }
   for(let i=0;i<n;i++){
     if(ns[i].pinned) continue;
