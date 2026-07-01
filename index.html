@@ -214,7 +214,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:
 /* ── RECT TOOL ── */
 .rect-overlay-svg{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:250;overflow:visible;}
 .rect-preview{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:0.7;}
-.rect-tool-panel{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);z-index:400;background:var(--glass);backdrop-filter:blur(24px) saturate(200%);border:1.5px solid rgba(16,185,129,.25);border-radius:20px;padding:14px 18px;box-shadow:0 12px 40px rgba(16,185,129,.15);min-width:280px;animation:popupAppear .3s cubic-bezier(.34,1.56,.64,1) both;}
+.rect-tool-panel{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);z-index:400;background:var(--glass);backdrop-filter:blur(24px) saturate(200%);border:1.5px solid rgba(16,185,129,.25);border-radius:20px;padding:14px 18px;box-shadow:0 12px 40px rgba(16,185,129,.15);min-width:300px;animation:popupAppear .3s cubic-bezier(.34,1.56,.64,1) both;}
 .rect-tool-panel.hidden{display:none;}
 .rect-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .rect-panel-title{font-size:13px;font-weight:600;color:var(--emerald-d);}
@@ -230,11 +230,44 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:
 .rect-color-dot.active{border-color:var(--gray-700);transform:scale(1.2);}
 .rect-hint{font-size:11px;color:var(--gray-400);line-height:1.5;}
 .rect-group{position:absolute;pointer-events:none;border-radius:10px;z-index:0;transition:none;}
-.rect-group-label{position:absolute;top:4px;left:10px;font-size:10px;font-weight:600;opacity:.7;pointer-events:none;}
+.rect-group-label{
+  position:absolute;top:6px;left:10px;
+  font-size:11px;font-weight:600;opacity:.85;
+  pointer-events:all;cursor:text;
+  max-width:calc(100% - 20px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  padding:1px 4px;border-radius:4px;
+  transition:background .15s;
+}
+.rect-group-label:hover{background:rgba(255,255,255,0.5);}
+.rect-group-label-input{
+  position:absolute;top:4px;left:8px;
+  font-size:11px;font-weight:600;
+  background:rgba(255,255,255,0.9);
+  border:1.5px solid var(--emerald);
+  border-radius:6px;padding:2px 6px;
+  outline:none;max-width:calc(100% - 16px);
+  color:var(--gray-700);
+}
+
+/* ── ERASER MODE ── */
+.eraser-btn.active .btn-icon{color:#ef4444;}
+.eraser-btn.active .btn-label{color:#b91c1c;}
+.eraser-btn.active{background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(245,158,11,.08));box-shadow:var(--shadow-neo-in);border:1px solid rgba(239,68,68,.3);}
+.eraser-select-svg{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:260;overflow:visible;}
+.eraser-select-rect{fill:rgba(239,68,68,0.08);stroke:#ef4444;stroke-width:2;stroke-dasharray:6 4;stroke-linecap:round;opacity:0.85;}
+.node.eraser-target .node-bubble{border-color:rgba(239,68,68,.7)!important;box-shadow:0 0 0 3px rgba(239,68,68,.3),8px 8px 20px rgba(209,217,230,.6),-6px -6px 16px rgba(255,255,255,.9)!important;}
 
 /* ── EXPORT BUTTON ── */
 .export-btn .btn-icon{color:#f59e0b;}
 .export-btn .btn-label{color:#b45309;}
+
+/* ── EDGE ACTIONS POPUP ── */
+.edge-action-popup{position:absolute;z-index:450;background:var(--glass-b);backdrop-filter:blur(16px);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:8px;box-shadow:0 8px 32px rgba(16,185,129,.15);display:flex;gap:6px;transform:translate(-50%,-100%);margin-top:-10px;animation:popupAppear .2s ease both;}
+.edge-action-popup.hidden{display:none;}
+.edge-btn{padding:6px 10px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,.8);color:var(--gray-700);transition:var(--tr);box-shadow:var(--shadow-neo-in);}
+.edge-btn:hover{background:rgba(16,185,129,.1);color:var(--emerald-d);}
+.edge-btn.danger:hover{background:rgba(239,68,68,.1);color:#ef4444;}
+.edge.directed{marker-end:url(#arrowHead);}
   </style>
 </head>
 <body>
@@ -260,6 +293,9 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:
           <feGaussianBlur stdDeviation="4" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
+        <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">
+          <path d="M0,0 L0,8 L8,4 z" fill="url(#edgeGrad)" />
+        </marker>
       </defs>
       <g id="edges-layer"></g>
     </svg>
@@ -288,6 +324,9 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:
     <div class="control-section center-section">
       <button id="btn-rect-tool" class="ctrl-btn" title="長方形ツール">
         <span class="btn-icon">▭</span><span class="btn-label">長方形</span>
+      </button>
+      <button id="btn-eraser" class="ctrl-btn eraser-btn" title="消しゴム：範囲選択してノードを一括削除">
+        <span class="btn-icon">⌫</span><span class="btn-label">消しゴム</span>
       </button>
       <button id="btn-zoom-out" class="ctrl-btn">
         <span class="btn-icon">－</span><span class="btn-label">縮小</span>
@@ -340,6 +379,11 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:
     <rect id="rect-preview" class="rect-preview" style="display:none"/>
   </svg>
 
+  <!-- ERASER SELECTION OVERLAY -->
+  <svg id="eraser-select-svg" class="eraser-select-svg">
+    <rect id="eraser-select-rect" class="eraser-select-rect" style="display:none"/>
+  </svg>
+
   <!-- RECT TOOL PANEL -->
   <div id="rect-tool-panel" class="rect-tool-panel hidden">
     <div class="rect-panel-header">
@@ -347,6 +391,11 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:
       <button id="rect-panel-close" class="icon-btn">✕</button>
     </div>
     <div class="rect-panel-body">
+      <div class="rect-option-row">
+        <span class="rect-option-label">グループ名</span>
+        <input id="rect-group-name-input" type="text" placeholder="グループ名（省略可）" maxlength="30"
+          style="flex:1;border:1.5px solid var(--gray-200);border-radius:8px;padding:4px 8px;font-size:12px;color:var(--gray-700);background:rgba(255,255,255,.8);outline:none;"/>
+      </div>
       <div class="rect-option-row">
         <span class="rect-option-label">線の種類</span>
         <div class="rect-style-btns">
@@ -367,6 +416,12 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:
   <div id="board-name-editor" class="board-name-editor hidden">
     <input id="board-name-input" type="text" placeholder="ボード名" maxlength="40"/>
     <button id="board-name-confirm" class="editor-btn primary">✓</button>
+  </div>
+
+  <!-- EDGE ACTIONS POPUP -->
+  <div id="edge-action-popup" class="edge-action-popup hidden">
+    <button id="edge-btn-arrow" class="edge-btn">➔ 矢印</button>
+    <button id="edge-btn-delete" class="edge-btn danger">✕ 削除</button>
   </div>
 
   <!-- BOARD MANAGER MODAL -->
@@ -460,6 +515,7 @@ const bubbleContainer = document.getElementById('bubble-container');
 const connectPreviewLine = document.getElementById('connect-preview-line');
 const previewSvg      = document.getElementById('connect-preview-svg');
 const colorPickerRow  = document.getElementById('color-picker-row');
+const edgeActionPopup = document.getElementById('edge-action-popup');
 
 // SVG gradients
 const defs = svgLayer.querySelector('defs');
@@ -484,7 +540,13 @@ function screenToWorld(sx, sy){
 function genId(){ return `n${state.nextId++}`; }
 function genEid(){ return `e${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
-function scaledFontSize(base){ return Math.max(8, Math.min(22, base * Math.sqrt(state.scale))); }
+function scaledFontSize(base){
+  // ズーム0.3〜3の全域で読みやすいサイズを保つ
+  // scale<1では縮小しすぎず、scale>1では拡大しすぎない
+  const clamped = Math.max(0.3, Math.min(3, state.scale));
+  const factor = Math.pow(clamped, 0.45); // 緩やかなカーブ
+  return Math.max(9, Math.min(26, base * factor));
+}
 
 function createNode(wx, wy, text='新しいノード', isRoot=false, colorIndex=0){
   const id = genId();
@@ -545,24 +607,33 @@ function positionNode(node){
   const s = worldToScreen(node.x, node.y);
   node.el.style.left = `${s.x}px`;
   node.el.style.top  = `${s.y}px`;
+  const sc = Math.max(0.3, Math.min(3, state.scale));
+  const sqrtSc = Math.pow(sc, 0.5);
   const first = node.el.querySelector('.node-text-first');
-  if(first) first.style.fontSize = `${scaledFontSize(13)}px`;
+  if(first){
+    first.style.fontSize = `${scaledFontSize(13)}px`;
+    first.style.lineHeight = '1.5';
+  }
+  const detail = node.el.querySelector('.node-detail');
+  if(detail) detail.style.fontSize = `${scaledFontSize(11)}px`;
   const bubble = node.el.querySelector('.node-bubble');
   if(bubble){
-    const py = Math.max(4, 12 * Math.sqrt(state.scale));
-    const px = Math.max(8, 16 * Math.sqrt(state.scale));
+    const py = Math.max(5, 12 * sqrtSc);
+    const px = Math.max(10, 16 * sqrtSc);
     bubble.style.padding = `${py}px ${px}px`;
-    bubble.style.minWidth = `${Math.max(30, 90 * Math.sqrt(state.scale))}px`;
-    bubble.style.borderRadius = `${Math.max(8, 20 * Math.sqrt(state.scale))}px`;
-    if(state.scale < 0.65) bubble.classList.add('compact');
+    bubble.style.minWidth = `${Math.max(40, 90 * sqrtSc)}px`;
+    bubble.style.maxWidth = `${Math.max(120, 200 * sqrtSc)}px`;
+    bubble.style.borderRadius = `${Math.max(8, 20 * sqrtSc)}px`;
+    // compactモード: scale<0.5で詳細非表示
+    if(sc < 0.5) bubble.classList.add('compact');
     else bubble.classList.remove('compact');
   }
 }
 
-function createEdge(fromId, toId){
+function createEdge(fromId, toId, directed=false){
   if(fromId===toId) return;
   if(state.edges.find(e=>(e.from===fromId&&e.to===toId)||(e.from===toId&&e.to===fromId))) return;
-  const edge = { id:genEid(), from:fromId, to:toId, el:null };
+  const edge = { id:genEid(), from:fromId, to:toId, directed, el:null };
   state.edges.push(edge);
   renderEdge(edge);
   return edge;
@@ -570,7 +641,18 @@ function createEdge(fromId, toId){
 function renderEdge(edge){
   const p = document.createElementNS('http://www.w3.org/2000/svg','path');
   p.classList.add('edge');
+  if(edge.directed) p.classList.add('directed');
   p.dataset.id = edge.id;
+  p.style.cursor = 'pointer';
+  p.style.pointerEvents = 'stroke';
+  
+  // エッジクリック時のイベント
+  p.addEventListener('mousedown', e => {
+    if(window.eraserState?.active) return; // 消しゴムモード時は無視
+    e.stopPropagation();
+    openEdgePopup(edge.id, e.clientX, e.clientY);
+  });
+  
   edgesLayer.appendChild(p);
   edge.el = p;
   updateEdge(edge);
@@ -579,7 +661,16 @@ function updateEdge(edge){
   const a = state.nodes.find(n=>n.id===edge.from);
   const b = state.nodes.find(n=>n.id===edge.to);
   if(!a||!b||!edge.el) return;
-  const s1=worldToScreen(a.x,a.y), s2=worldToScreen(b.x,b.y);
+  const s1=worldToScreen(a.x,a.y);
+  let s2=worldToScreen(b.x,b.y);
+  if(edge.directed && b.el){
+    // 矢印が対象ノードの下に隠れないよう、バブル外側まで線を引き戻す
+    const r = b.el.getBoundingClientRect();
+    const margin = Math.max(r.width, r.height)/2 + 4;
+    const ddx = s2.x-s1.x, ddy = s2.y-s1.y;
+    const len = Math.hypot(ddx,ddy) || 1;
+    s2 = { x: s2.x - (ddx/len)*margin, y: s2.y - (ddy/len)*margin };
+  }
   const dx=s2.x-s1.x, dy=s2.y-s1.y;
   edge.el.setAttribute('d',`M${s1.x},${s1.y} C${s1.x+dx*.4},${s1.y+dy*.05} ${s1.x+dx*.6},${s1.y+dy*.95} ${s2.x},${s2.y}`);
 }
@@ -587,6 +678,46 @@ function removeEdgesByNode(id){
   state.edges.filter(e=>e.from===id||e.to===id).forEach(e=>e.el?.remove());
   state.edges = state.edges.filter(e=>e.from!==id&&e.to!==id);
 }
+
+// エッジポップアップ処理
+let activeEdgeId = null;
+function openEdgePopup(edgeId, cx, cy){
+  activeEdgeId = edgeId;
+  const edge = state.edges.find(e => e.id === edgeId);
+  if(!edge) return;
+  const btnArrow = document.getElementById('edge-btn-arrow');
+  btnArrow.textContent = edge.directed ? '━ 通常の線' : '➔ 矢印';
+  edgeActionPopup.style.left = `${cx}px`;
+  edgeActionPopup.style.top = `${cy - 10}px`;
+  edgeActionPopup.classList.remove('hidden');
+}
+function closeEdgePopup(){
+  edgeActionPopup.classList.add('hidden');
+  activeEdgeId = null;
+}
+document.getElementById('edge-btn-arrow').addEventListener('click', () => {
+  const edge = state.edges.find(e => e.id === activeEdgeId);
+  if(edge && edge.el){
+    edge.directed = !edge.directed;
+    edge.el.classList.toggle('directed', edge.directed);
+    autoSaveBoard();
+  }
+  closeEdgePopup();
+});
+document.getElementById('edge-btn-delete').addEventListener('click', () => {
+  const edge = state.edges.find(e => e.id === activeEdgeId);
+  if(edge && edge.el) {
+    edge.el.remove();
+    state.edges = state.edges.filter(e => e.id !== activeEdgeId);
+    autoSaveBoard();
+  }
+  closeEdgePopup();
+});
+window.addEventListener('mousedown', e => {
+  if(!edgeActionPopup.classList.contains('hidden') && !e.target.closest('#edge-action-popup') && !e.target.classList.contains('edge')){
+    closeEdgePopup();
+  }
+});
 
 // REP: 全ノード間の斥力, SPK: バネ定数, SPL: バネ自然長(接続ノードの目標距離), MIN_EDGE_DIST: 接続ノードの最小距離
 const REP=8000, SPK=0.045, SPL=260, DAMP=0.85, MAXV=8, MIN_EDGE_DIST=200, EDGE_REP=18000;
@@ -631,6 +762,20 @@ function renderLoop(){
   physicsTick();
   for(const n of state.nodes) positionNode(n);
   for(const e of state.edges) updateEdge(e);
+  // rectGroupsの位置もここで更新（setIntervalより滑らか）
+  if(window.rectGroups){
+    window.rectGroups.forEach(g => {
+      if (!g.el) return;
+      const sx = g.wx * state.scale + state.panX;
+      const sy = g.wy * state.scale + state.panY;
+      const sw = g.ww * state.scale;
+      const sh = g.wh * state.scale;
+      g.el.style.left   = `${sx}px`;
+      g.el.style.top    = `${sy}px`;
+      g.el.style.width  = `${sw}px`;
+      g.el.style.height = `${sh}px`;
+    });
+  }
   state.animFrame = requestAnimationFrame(renderLoop);
 }
 
@@ -801,9 +946,65 @@ function populateBubbles(items){
     el.innerHTML=`<div class="bubble-title">✦ ${esc(title)}</div>${preview?`<div class="bubble-preview">${esc(preview)}</div>`:''}<span class="bubble-tag">${date}</span>`;
     el.setAttribute('draggable','true');
     el.addEventListener('dragstart',e=>{e.dataTransfer.setData('rt',item.text);e.dataTransfer.setData('rtt',title);});
+    // クリックでも配置できるようにする
+    el.addEventListener('click', () => {
+      placeNodeFromRecall(item.text);
+    });
     bubbleContainer.appendChild(el);
   });
 }
+
+function placeNodeFromRecall(text){
+  // 画面中央のワールド座標を計算
+  const cw = canvasWrapper.clientWidth;
+  const ch = canvasWrapper.clientHeight;
+  const w = screenToWorld(cw/2 + canvasWrapper.getBoundingClientRect().left, ch/2 + canvasWrapper.getBoundingClientRect().top);
+  
+  // 少しランダムにずらす
+  const rx = w.x + (Math.random()-0.5)*40;
+  const ry = w.y + (Math.random()-0.5)*40;
+  
+  const node = createNode(rx, ry, text);
+  if(state.selectedNode) createEdge(state.selectedNode, node.id);
+  
+  // アニメーションで中央に持ってくる
+  panToNode(node);
+  autoSaveBoard();
+}
+
+let panToNodeFrame = null;
+function panToNode(node) {
+  const cw = canvasWrapper.clientWidth;
+  const ch = canvasWrapper.clientHeight;
+  // ノードが画面の中央に来るような panX, panY の目標値
+  const targetPanX = cw/2 - node.x * state.scale;
+  const targetPanY = ch/2 - node.y * state.scale;
+
+  const startPanX = state.panX;
+  const startPanY = state.panY;
+
+  if(panToNodeFrame) cancelAnimationFrame(panToNodeFrame);
+  let start = null;
+  const duration = 400; // ms
+
+  function step(timestamp) {
+    if(!start) start = timestamp;
+    const progress = Math.min((timestamp - start) / duration, 1);
+    // ease-out cubic
+    const ease = 1 - Math.pow(1 - progress, 3);
+
+    state.panX = startPanX + (targetPanX - startPanX) * ease;
+    state.panY = startPanY + (targetPanY - startPanY) * ease;
+
+    if(progress < 1) {
+      panToNodeFrame = requestAnimationFrame(step);
+    } else {
+      panToNodeFrame = null;
+    }
+  }
+  panToNodeFrame = requestAnimationFrame(step);
+}
+
 canvasWrapper.addEventListener('dragover',e=>e.preventDefault());
 canvasWrapper.addEventListener('drop',e=>{
   e.preventDefault();
@@ -811,6 +1012,8 @@ canvasWrapper.addEventListener('drop',e=>{
   if(!preview) return;
   const w=screenToWorld(e.clientX,e.clientY), node=createNode(w.x,w.y,preview);
   if(state.selectedNode) createEdge(state.selectedNode,node.id);
+  // ドラッグの場合はドロップした位置なのでパンはしない
+  autoSaveBoard();
 });
 document.getElementById('recall-search').addEventListener('input',e=>triggerRecall(e.target.value));
 
@@ -830,8 +1033,8 @@ function newBoardMeta(name='無題のボード', parentId=null){
 function serializeBoard(){
   return {
     nodes: state.nodes.map(n=>({id:n.id,x:n.x,y:n.y,text:n.text,colorIndex:n.colorIndex||0,isRoot:n.isRoot})),
-    edges: state.edges.map(e=>({id:e.id,from:e.from,to:e.to})),
-    rects: (window.rectGroups || []).map(r=>({id:r.id,wx:r.wx,wy:r.wy,ww:r.ww,wh:r.wh,colorIdx:r.colorIdx,dashed:r.dashed})),
+    edges: state.edges.map(e=>({id:e.id,from:e.from,to:e.to,directed:e.directed||false})),
+    rects: (window.rectGroups || []).map(r=>({id:r.id,wx:r.wx,wy:r.wy,ww:r.ww,wh:r.wh,colorIdx:r.colorIdx,dashed:r.dashed,label:r.label||''})),
     panX:state.panX, panY:state.panY, scale:state.scale, nextId:state.nextId,
   };
 }
@@ -865,7 +1068,7 @@ function loadBoardIntoCanvas(data){
     const node={...n,vx:0,vy:0,fx:0,fy:0,pinned:false,el:null};
     state.nodes.push(node); renderNode(node);
   });
-  data.edges.forEach(e=>{ const edge={...e,el:null}; state.edges.push(edge); renderEdge(edge); });
+  data.edges.forEach(e=>{ const edge={...e, directed:e.directed||false, el:null}; state.edges.push(edge); renderEdge(edge); });
   if(data.rects && window.restoreRect) {
     data.rects.forEach(r => window.restoreRect(r));
   }
@@ -1233,6 +1436,8 @@ document.getElementById('rect-style-dashed').addEventListener('click', function(
 });
 
 rectBtnTool.addEventListener('click', () => {
+  // 消しゴムモードが有効なら先に解除
+  if(window.eraserState && window.eraserState.active) deactivateEraser();
   rectState.active = !rectState.active;
   rectState.editingRectId = null;
   rectBtnTool.classList.toggle('active', rectState.active);
@@ -1240,6 +1445,8 @@ rectBtnTool.addEventListener('click', () => {
   document.querySelector('.rect-panel-title').textContent = '▭ 長方形ツール';
   document.getElementById('rect-hint-text').style.display = 'block';
   document.getElementById('btn-rect-delete').classList.add('hidden');
+  const nameInput = document.getElementById('rect-group-name-input');
+  if(nameInput) nameInput.value = '';
   if (rectState.active) {
     canvasWrapper.style.cursor = 'crosshair';
   } else {
@@ -1275,12 +1482,17 @@ function updateEditingRect(){
   if(!g) return;
   g.colorIdx = rectState.colorIdx;
   g.dashed = rectState.dashed;
+  const nameInput = document.getElementById('rect-group-name-input');
+  if(nameInput) g.label = nameInput.value.trim();
   const c = RECT_COLORS[g.colorIdx];
   if(g.el){
     g.el.style.border = `2px ${g.dashed ? 'dashed' : 'solid'} ${c.stroke}`;
     g.el.style.background = c.fill;
     const lbl = g.el.querySelector('.rect-group-label');
-    if(lbl) lbl.style.color = c.stroke;
+    if(lbl){
+      lbl.style.color = c.stroke;
+      lbl.textContent = g.label || 'グループ名を入力...';
+    }
   }
   if(typeof autoSaveBoard === 'function') autoSaveBoard();
 }
@@ -1331,7 +1543,7 @@ function updateRectPreview(mx, my) {
   rectPreview.setAttribute('height', h);
 }
 
-function buildRectDOM(groupId, colorIdx, dashed, wx, wy, ww, wh) {
+function buildRectDOM(groupId, colorIdx, dashed, wx, wy, ww, wh, label) {
   const c = RECT_COLORS[colorIdx];
   const groupEl = document.createElement('div');
   groupEl.className = 'rect-group';
@@ -1340,16 +1552,51 @@ function buildRectDOM(groupId, colorIdx, dashed, wx, wy, ww, wh) {
   const labelEl = document.createElement('div');
   labelEl.className = 'rect-group-label';
   labelEl.style.color = c.stroke;
-  labelEl.textContent = `グループ (クリックで編集)`;
+  labelEl.textContent = label || 'グループ名を入力...';
   labelEl.style.pointerEvents = 'all';
-  labelEl.style.cursor = 'pointer';
+  // シングルクリック: 編集パネルを開く
   labelEl.addEventListener('click', (e) => {
     e.stopPropagation();
     openRectEditor(groupId);
   });
+  // ダブルクリック: インライン名前編集
+  labelEl.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    startInlineLabelEdit(groupId, labelEl, groupEl, c.stroke);
+  });
   groupEl.appendChild(labelEl);
   nodesLayer.insertBefore(groupEl, nodesLayer.firstChild);
   return groupEl;
+}
+
+function startInlineLabelEdit(groupId, labelEl, groupEl, strokeColor) {
+  const g = window.rectGroups.find(r => r.id === groupId);
+  if(!g) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'rect-group-label-input';
+  input.value = g.label || '';
+  input.placeholder = 'グループ名...';
+  input.style.color = strokeColor;
+  groupEl.appendChild(input);
+  labelEl.style.visibility = 'hidden';
+  input.focus(); input.select();
+  function commit(){
+    const val = input.value.trim();
+    g.label = val;
+    labelEl.textContent = val || 'グループ名を入力...';
+    labelEl.style.visibility = '';
+    input.remove();
+    // パネルの入力欄も更新
+    const panelInput = document.getElementById('rect-group-name-input');
+    if(panelInput && rectState.editingRectId === groupId) panelInput.value = val;
+    if(typeof autoSaveBoard === 'function') autoSaveBoard();
+  }
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Enter') { e.preventDefault(); commit(); }
+    if(e.key === 'Escape') { input.value = g.label || ''; commit(); }
+  });
 }
 
 function openRectEditor(groupId) {
@@ -1361,10 +1608,26 @@ function openRectEditor(groupId) {
   rectColorRow.querySelectorAll('.rect-color-dot').forEach((d,i) => d.classList.toggle('active', i === g.colorIdx));
   document.getElementById('rect-style-solid').classList.toggle('active', !g.dashed);
   document.getElementById('rect-style-dashed').classList.toggle('active', g.dashed);
-  document.querySelector('.rect-panel-title').textContent = '✎ 長方形を再編集';
+  const nameInput = document.getElementById('rect-group-name-input');
+  if(nameInput) nameInput.value = g.label || '';
+  document.querySelector('.rect-panel-title').textContent = '✎ グループを編集';
   document.getElementById('rect-hint-text').style.display = 'none';
   document.getElementById('btn-rect-delete').classList.remove('hidden');
   rectToolPanel.classList.remove('hidden');
+  // 名前入力の変更をリアルタイム反映
+  if(nameInput){
+    nameInput.oninput = () => {
+      if(rectState.editingRectId){
+        const eg = window.rectGroups.find(r => r.id === rectState.editingRectId);
+        if(eg){
+          eg.label = nameInput.value.trim();
+          const lbl = eg.el && eg.el.querySelector('.rect-group-label');
+          if(lbl) lbl.textContent = eg.label || 'グループ名を入力...';
+        }
+      }
+    };
+    nameInput.onblur = () => { if(typeof autoSaveBoard==='function') autoSaveBoard(); };
+  }
 }
 
 function finalizeRect(sx1, sy1, sx2, sy2) {
@@ -1385,32 +1648,24 @@ function finalizeRect(sx1, sy1, sx2, sy2) {
   const ww = gw / state.scale;
   const wh = gh / state.scale;
   const groupId = `rg${rectGroupCounter++}`;
-  const groupEl = buildRectDOM(groupId, rectState.colorIdx, rectState.dashed, wx, wy, ww, wh);
-  window.rectGroups.push({ id: groupId, el: groupEl, colorIdx: rectState.colorIdx, dashed: rectState.dashed, wx, wy, ww, wh });
+  // パネルの名前入力を読み取る
+  const nameInput = document.getElementById('rect-group-name-input');
+  const label = nameInput ? nameInput.value.trim() : '';
+  const groupEl = buildRectDOM(groupId, rectState.colorIdx, rectState.dashed, wx, wy, ww, wh, label);
+  window.rectGroups.push({ id: groupId, el: groupEl, colorIdx: rectState.colorIdx, dashed: rectState.dashed, wx, wy, ww, wh, label });
   nodesInside.forEach(n => { n.groupId = groupId; if (n.el) n.el.classList.add('grouped'); });
   if(typeof autoSaveBoard === 'function') autoSaveBoard();
 }
 
 window.restoreRect = function(data){
-  const el = buildRectDOM(data.id, data.colorIdx, data.dashed, data.wx, data.wy, data.ww, data.wh);
+  const el = buildRectDOM(data.id, data.colorIdx, data.dashed, data.wx, data.wy, data.ww, data.wh, data.label||'');
   window.rectGroups.push({ ...data, el });
   const num = parseInt(data.id.replace('rg','')) || 0;
   if(num >= rectGroupCounter) rectGroupCounter = num + 1;
 };
 
-setInterval(() => {
-  window.rectGroups.forEach(g => {
-    if (!g.el) return;
-    const sx = g.wx * state.scale + state.panX;
-    const sy = g.wy * state.scale + state.panY;
-    const sw = g.ww * state.scale;
-    const sh = g.wh * state.scale;
-    g.el.style.left   = `${sx}px`;
-    g.el.style.top    = `${sy}px`;
-    g.el.style.width  = `${sw}px`;
-    g.el.style.height = `${sh}px`;
-  });
-}, 30);
+// rectGroupの位置更新はrenderLoop()に統合済み（上記参照）
+// setIntervalは削除してrAFベースに統一
 
 function clearRects() {
   window.rectGroups.forEach(g => { if (g.el) g.el.remove(); });
@@ -1418,6 +1673,117 @@ function clearRects() {
   rectGroupCounter = 1;
 }
 window.clearRects = clearRects;
+
+// ══════════════════════════════════════════════════════
+// eraser.js — 消しゴムモード（範囲選択でノードを一括削除）
+// ══════════════════════════════════════════════════════
+
+window.eraserState = {
+  active: false,
+  drawing: false,
+  startX: 0, startY: 0,
+};
+
+const eraserBtn      = document.getElementById('btn-eraser');
+const eraserSelectSvg  = document.getElementById('eraser-select-svg');
+const eraserSelectRect = document.getElementById('eraser-select-rect');
+
+function activateEraser(){
+  window.eraserState.active = true;
+  eraserBtn.classList.add('active');
+  canvasWrapper.style.cursor = 'crosshair';
+  // 他のモードを解除
+  if(rectState.active){
+    rectState.active = false;
+    rectBtnTool.classList.remove('active');
+    rectToolPanel.classList.add('hidden');
+    hideRectPreview();
+  }
+}
+function deactivateEraser(){
+  window.eraserState.active = false;
+  window.eraserState.drawing = false;
+  eraserBtn.classList.remove('active');
+  canvasWrapper.style.cursor = '';
+  eraserSelectRect.style.display = 'none';
+  // ターゲットのハイライトを解除
+  state.nodes.forEach(n => n.el && n.el.classList.remove('eraser-target'));
+}
+
+eraserBtn.addEventListener('click', () => {
+  if(window.eraserState.active) deactivateEraser();
+  else activateEraser();
+});
+
+canvasWrapper.addEventListener('mousedown', e => {
+  if(!window.eraserState.active) return;
+  if(e.button !== 0) return;
+  if(e.target.closest('.node') || e.target.closest('.node-editor')) return;
+  e.stopImmediatePropagation();
+  window.eraserState.drawing = true;
+  window.eraserState.startX = e.clientX;
+  window.eraserState.startY = e.clientY;
+  eraserSelectRect.setAttribute('x', e.clientX);
+  eraserSelectRect.setAttribute('y', e.clientY);
+  eraserSelectRect.setAttribute('width', 0);
+  eraserSelectRect.setAttribute('height', 0);
+  eraserSelectRect.style.display = 'block';
+}, true);
+
+window.addEventListener('mousemove', e => {
+  if(!window.eraserState.drawing) return;
+  const x1 = Math.min(window.eraserState.startX, e.clientX);
+  const y1 = Math.min(window.eraserState.startY, e.clientY);
+  const w  = Math.abs(e.clientX - window.eraserState.startX);
+  const h  = Math.abs(e.clientY - window.eraserState.startY);
+  eraserSelectRect.setAttribute('x', x1);
+  eraserSelectRect.setAttribute('y', y1);
+  eraserSelectRect.setAttribute('width', w);
+  eraserSelectRect.setAttribute('height', h);
+  // ターゲット候補をリアルタイムハイライト
+  state.nodes.forEach(n => {
+    if(!n.el) return;
+    const r = n.el.getBoundingClientRect();
+    const cx = r.left + r.width/2, cy = r.top + r.height/2;
+    const inside = cx>=x1 && cx<=x1+w && cy>=y1 && cy<=y1+h;
+    n.el.classList.toggle('eraser-target', inside);
+  });
+});
+
+window.addEventListener('mouseup', e => {
+  if(!window.eraserState.drawing) return;
+  window.eraserState.drawing = false;
+  eraserSelectRect.style.display = 'none';
+  const x1 = Math.min(window.eraserState.startX, e.clientX);
+  const y1 = Math.min(window.eraserState.startY, e.clientY);
+  const x2 = Math.max(window.eraserState.startX, e.clientX);
+  const y2 = Math.max(window.eraserState.startY, e.clientY);
+  if((x2-x1) < 5 && (y2-y1) < 5){
+    // ほぼ点クリック: ハイライトだけ解除
+    state.nodes.forEach(n => n.el && n.el.classList.remove('eraser-target'));
+    return;
+  }
+  // 範囲内のノードを収集して削除
+  const toDelete = state.nodes.filter(n => {
+    if(!n.el) return false;
+    const r = n.el.getBoundingClientRect();
+    const cx = r.left + r.width/2, cy = r.top + r.height/2;
+    return cx>=x1 && cx<=x2 && cy>=y1 && cy<=y2;
+  });
+  if(toDelete.length === 0) return;
+  if(!confirm(`選択範囲内の ${toDelete.length} 個のノードを削除しますか？`)) {
+    state.nodes.forEach(n => n.el && n.el.classList.remove('eraser-target'));
+    return;
+  }
+  toDelete.forEach(n => {
+    n.el && n.el.classList.remove('eraser-target');
+    removeEdgesByNode(n.id);
+    n.el && n.el.remove();
+  });
+  state.nodes = state.nodes.filter(n => !toDelete.includes(n));
+  if(state.nodes.length === 0) hintOverlay.classList.remove('hidden');
+  if(typeof autoSaveBoard === 'function') autoSaveBoard();
+});
 
 // ── SIDEBAR RESIZE ──
 const sidebarEl       = document.getElementById('recall-sidebar');
